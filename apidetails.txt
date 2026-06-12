@@ -79,6 +79,30 @@ RESPONSE:
   }
 }
 
+MULTIMODAL (VISION) REQUEST EXAMPLE:
+To send an image, use the standard OpenAI structure with base64 Data URLs.
+REQUEST BODY:
+{
+  "model": "gemini-advanced",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "What is shown in this image?"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/png;base64,iVBORw0KGgoAAAANS..."
+          }
+        }
+      ]
+    }
+  ]
+}
+
 ENDPOINT: GET /openai/v1/models
 DESCRIPTION: Retrieves the list of available Gemini models on the web interface in an OpenAI-compatible model list format.
 
@@ -125,6 +149,33 @@ RESPONSE:
     "input_tokens": 3,
     "output_tokens": 12
   }
+}
+
+MULTIMODAL (VISION) REQUEST EXAMPLE:
+To send an image, use the standard Claude source block structure with base64 encoded data.
+REQUEST BODY:
+{
+  "model": "gemini-advanced",
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Describe this image."
+        },
+        {
+          "type": "image",
+          "source": {
+            "type": "base64",
+            "media_type": "image/png",
+            "data": "iVBORw0KGgoAAAANS..."
+          }
+        }
+      ]
+    }
+  ]
 }
 
 
@@ -176,6 +227,28 @@ RESPONSE:
     "candidatesTokenCount": 0,
     "totalTokenCount": 0
   }
+}
+
+MULTIMODAL (VISION) REQUEST EXAMPLE:
+To send an image, use the standard Gemini inlineData block structure with base64 encoded data.
+REQUEST BODY:
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Analyze this picture."
+        },
+        {
+          "inlineData": {
+            "mimeType": "image/png",
+            "data": "iVBORw0KGgoAAAANS..."
+          }
+        }
+      ]
+    }
+  ]
 }
 
 ENDPOINT: POST /gemini/v1beta/models/{model}:streamGenerateContent

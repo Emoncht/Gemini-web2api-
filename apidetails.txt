@@ -1,6 +1,8 @@
 ========================================================
          GEMINI WEB TO API - DETAILED DOCUMENTATION
 ========================================================
+Last Updated: 2026-06-13
+
 
 Base URL (Railway): https://gemini-web2api-production-c2c7.up.railway.app
 Base URL (Local): http://localhost:4981

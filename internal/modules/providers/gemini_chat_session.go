@@ -39,7 +39,10 @@ func (s *GeminiChatSession) SendMessage(ctx context.Context, message string, opt
 	if len(uploadedFiles) > 0 {
 		fileData := make([]interface{}, 0, len(uploadedFiles))
 		for _, file := range uploadedFiles {
-			fileData = append(fileData, []interface{}{[]interface{}{file.ID}, file.Name})
+			fileData = append(fileData, []interface{}{
+				[]interface{}{file.ID, 1, nil, file.MimeType},
+				file.Name, nil, nil, nil, nil, nil, nil, []interface{}{0},
+			})
 		}
 		messageContent = []interface{}{message, 0, nil, fileData, nil, nil, 0}
 	}

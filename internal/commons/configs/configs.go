@@ -91,8 +91,8 @@ func (c *Config) Validate() error {
 	var missingVars []string
 
 	// Check Gemini configuration - at least one of these should be present
-	if c.Gemini.Secure1PSID == "" {
-		missingVars = append(missingVars, "GEMINI_1PSID")
+	if c.Gemini.Cookies == "" && c.Gemini.Secure1PSID == "" {
+		missingVars = append(missingVars, "GEMINI_COOKIES or GEMINI_1PSID")
 	}
 
 	if c.Gemini.Secure1PSID != "" {

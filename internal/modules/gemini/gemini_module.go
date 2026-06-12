@@ -8,7 +8,7 @@ import (
 )
 
 var Module = fx.Options(
-	fx.Provide(providers.NewClient),
+	fx.Provide(providers.NewClientManager),
 	fx.Provide(NewGeminiService),
 	fx.Provide(NewGeminiController),
 	fx.Invoke(RegisterRoutes),

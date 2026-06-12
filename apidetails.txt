@@ -1,0 +1,199 @@
+========================================================
+         GEMINI WEB TO API - DETAILED DOCUMENTATION
+========================================================
+
+Base URL (Railway): https://gemini-web2api-production-c2c7.up.railway.app
+Base URL (Local): http://localhost:4981
+
+OVERVIEW
+--------
+This API transforms the Google Gemini web interface into standardized REST endpoints. 
+It acts as a bridge that exposes three major AI protocol compatibilities:
+1. OpenAI Compatibility
+2. Anthropic Claude Compatibility 
+3. Native Google Gemini Compatibility
+
+AUTHENTICATION
+--------------
+The API server inherently handles the authentication via your `GEMINI_COOKIES` (or `GEMINI_1PSID`) configured in the server's environment variables. 
+When making requests to this API, you DO NOT need to pass actual, valid API keys. Any API key sent by clients via Authorization or x-api-key headers is safely ignored. However, some SDKs require the authorization headers to be present, so you may pass dummy keys (e.g., "sk-xxx" or "abc") to bypass client-side validation.
+
+AVAILABLE MODELS
+----------------
+The server auto-discovers available models from the Gemini Web UI based on your account's capabilities. You can always retrieve the live list by hitting `GET /openai/v1/models`.
+
+Based on our live query against your account, you currently have access to these models (and their experimental previews):
+- `gemini-advanced`
+- `gemini-2.0-flash`
+- `gemini-2.5-flash` (plus previews like `gemini-2.5-flash-preview-04-17`, `gemini-2.5-flash-preview-tts`, etc.)
+- `gemini-3-flash-preview`
+- `gemini-3.1-flash-image-preview`
+- `gemini-3-pro-image-preview-11-2025`
+
+
+========================================================
+               1. OPENAI COMPATIBILITY API
+========================================================
+
+ENDPOINT: POST /openai/v1/chat/completions
+DESCRIPTION: Generates a chat completion formatted like the standard OpenAI API.
+HEADERS:
+  - Content-Type: application/json
+  - Authorization: Bearer <any-dummy-key> (Optional, for SDK compatibility)
+
+REQUEST BODY:
+{
+  "model": "gemini-advanced", // Or other Gemini web models like "gemini-2.0-flash"
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is the capital of France?"
+    }
+  ],
+  "temperature": 0.7, // Optional
+  "stream": false // Optional (Set to true for Server-Sent Events streaming)
+}
+
+RESPONSE:
+{
+  "id": "chatcmpl-1781279851",
+  "object": "chat.completion",
+  "created": 1781279851,
+  "model": "gemini-advanced",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "The capital of France is **Paris**."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0
+  }
+}
+
+ENDPOINT: GET /openai/v1/models
+DESCRIPTION: Retrieves the list of available Gemini models on the web interface in an OpenAI-compatible model list format.
+
+
+========================================================
+               2. CLAUDE COMPATIBILITY API
+========================================================
+
+ENDPOINT: POST /claude/v1/messages
+DESCRIPTION: Anthropic-style message generation endpoint.
+HEADERS:
+  - Content-Type: application/json
+  - x-api-key: <any-dummy-key> (Required by Anthropic SDK)
+  - anthropic-version: 2023-06-01 (Required by Anthropic SDK)
+
+REQUEST BODY:
+{
+  "model": "gemini-advanced",
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello!"
+    }
+  ],
+  "temperature": 0.7, // Optional
+  "stream": false // Optional
+}
+
+RESPONSE:
+{
+  "id": "msg_b9ecdbbc-f1d4-4ca8-9698-7c254f1f166c",
+  "type": "message",
+  "role": "assistant",
+  "model": "gemini-advanced",
+  "content": [
+    {
+      "type": "text",
+      "text": "Hello! How's it going? What's on your mind today?"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 3,
+    "output_tokens": 12
+  }
+}
+
+
+========================================================
+            3. GEMINI NATIVE COMPATIBILITY API
+========================================================
+
+ENDPOINT: POST /gemini/v1beta/models/{model}:generateContent
+DESCRIPTION: Standard Gemini API endpoint for generating content (matches Google's official Gemini API spec).
+HEADERS:
+  - Content-Type: application/json
+  - x-goog-api-key: <any-dummy-key> (Optional, for SDK compatibility)
+
+URL PARAMETERS:
+  - {model}: The model name to use, e.g., "gemini-advanced"
+
+REQUEST BODY:
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Hello!"
+        }
+      ]
+    }
+  ]
+}
+
+RESPONSE:
+{
+  "candidates": [
+    {
+      "index": 0,
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "Hello! How can I help you today?"
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 0,
+    "candidatesTokenCount": 0,
+    "totalTokenCount": 0
+  }
+}
+
+ENDPOINT: POST /gemini/v1beta/models/{model}:streamGenerateContent
+DESCRIPTION: Gemini-native Server-Sent Events (SSE) streaming endpoint.
+
+
+========================================================
+               4. SYSTEM & HEALTH ENDPOINTS
+========================================================
+
+ENDPOINT: GET /health
+DESCRIPTION: Returns a lightweight 200 OK status to indicate that the web server is running. Used by Docker/K8s/Railway to monitor service liveness.
+RESPONSE:
+{
+  "service": "gemini-web-to-api",
+  "status": "ok"
+}
+
+ENDPOINT: GET /docs
+DESCRIPTION: Serves the interactive Scalar UI documentation. Open this endpoint in a web browser to view, explore, and test the endpoints visually.
+
+ENDPOINT: GET /openapi.json
+DESCRIPTION: Provides the raw OpenAPI (Swagger) specification file for all the available routes in this project.

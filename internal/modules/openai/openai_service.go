@@ -20,11 +20,11 @@ import (
 )
 
 type OpenAIService struct {
-	client *providers.Client
+	client *providers.ClientManager
 	log    *zap.Logger
 }
 
-func NewOpenAIService(client *providers.Client, log *zap.Logger) *OpenAIService {
+func NewOpenAIService(client *providers.ClientManager, log *zap.Logger) *OpenAIService {
 	return &OpenAIService{
 		client: client,
 		log:    log,

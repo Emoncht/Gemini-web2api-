@@ -20,6 +20,5 @@ func main() {
 		),
 		server.Module,
 		modules.Module,
-		fx.NopLogger,
 	).Run()
 }

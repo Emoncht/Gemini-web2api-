@@ -18,8 +18,9 @@ import (
 )
 
 type uploadedFile struct {
-	ID   string
-	Name string
+	ID       string
+	Name     string
+	MimeType string
 }
 
 // InputFilesFromAttachments decodes base64 API attachments into provider upload inputs.
@@ -163,7 +164,7 @@ func (c *Client) uploadFile(ctx context.Context, filename, mimeType string, data
 	if id == "" {
 		return uploadedFile{}, fmt.Errorf("upload %q returned empty file id", filename)
 	}
-	return uploadedFile{ID: id, Name: filename}, nil
+	return uploadedFile{ID: id, Name: filename, MimeType: mimeType}, nil
 }
 
 func (c *Client) pushIDOrDefault() string {

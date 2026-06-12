@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gemini-web-to-api/internal/commons/configs"
@@ -70,10 +71,10 @@ var (
 	imageURLRegex            = regexp.MustCompile(`(?i)(?:https?:)?//[^\s"'<>\\]+|(?:[a-z0-9.-]+\.)?googleusercontent\.com/[^\s"'<>\\]+`)
 )
 
-func NewClient(cfg *configs.Config, log *zap.Logger) *Client {
+func newSingleClient(cfg *configs.Config, log *zap.Logger, psid, psidts string) *Client {
 	cookies := &CookieStore{
-		Secure1PSID:   cfg.Gemini.Secure1PSID,
-		Secure1PSIDTS: cfg.Gemini.Secure1PSIDTS,
+		Secure1PSID:   psid,
+		Secure1PSIDTS: psidts,
 		UpdatedAt:     time.Now(),
 	}
 
@@ -95,6 +96,121 @@ func NewClient(cfg *configs.Config, log *zap.Logger) *Client {
 		maxRetries:      cfg.Gemini.MaxRetries,
 		log:             log,
 	}
+}
+
+type ClientManager struct {
+	clients []*Client
+	index   uint32
+	log     *zap.Logger
+}
+
+func NewClientManager(cfg *configs.Config, log *zap.Logger) *ClientManager {
+	var clients []*Client
+
+	if cfg.Gemini.Cookies != "" {
+		pairs := strings.Split(cfg.Gemini.Cookies, ";")
+		for _, pair := range pairs {
+			parts := strings.Split(pair, ",")
+			if len(parts) >= 2 {
+				psid := strings.TrimSpace(parts[0])
+				ts := strings.TrimSpace(parts[1])
+				if psid != "" {
+					clients = append(clients, newSingleClient(cfg, log, psid, ts))
+				}
+			}
+		}
+	}
+
+	if len(clients) == 0 {
+		if cfg.Gemini.Secure1PSID != "" {
+			clients = append(clients, newSingleClient(cfg, log, cfg.Gemini.Secure1PSID, cfg.Gemini.Secure1PSIDTS))
+		}
+	}
+
+	if len(clients) == 0 {
+		log.Warn("No valid Gemini cookies found in configuration")
+	}
+
+	return &ClientManager{
+		clients: clients,
+		log:     log,
+	}
+}
+
+func (m *ClientManager) NextClient() *Client {
+	if len(m.clients) == 0 {
+		return nil
+	}
+	idx := atomic.AddUint32(&m.index, 1)
+	return m.clients[(idx-1)%uint32(len(m.clients))]
+}
+
+func (m *ClientManager) Init(ctx context.Context) error {
+	for _, c := range m.clients {
+		if err := c.Init(ctx); err != nil {
+			m.log.Error("Failed to initialize one of the clients", zap.Error(err))
+		}
+	}
+	return nil
+}
+
+func (m *ClientManager) GenerateContent(ctx context.Context, prompt string, options ...GenerateOption) (*Response, error) {
+	c := m.NextClient()
+	if c == nil {
+		return nil, errors.New("no clients available")
+	}
+	return c.GenerateContent(ctx, prompt, options...)
+}
+
+func (m *ClientManager) StartChat(options ...ChatOption) ChatSession {
+	c := m.NextClient()
+	if c == nil {
+		return nil
+	}
+	return c.StartChat(options...)
+}
+
+func (m *ClientManager) Close() error {
+	for _, c := range m.clients {
+		_ = c.Close()
+	}
+	return nil
+}
+
+func (m *ClientManager) GetName() string {
+	return "GeminiClientManager"
+}
+
+func (m *ClientManager) IsHealthy() bool {
+	for _, c := range m.clients {
+		if c.IsHealthy() {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *ClientManager) ListModels() []ModelInfo {
+	if len(m.clients) > 0 {
+		return m.clients[0].ListModels()
+	}
+	return nil
+}
+
+func (m *ClientManager) DeepResearch(ctx context.Context, query string, opts ...DeepResearchOption) (*DeepResearchResult, error) {
+	c := m.NextClient()
+	if c == nil {
+		return nil, errors.New("no clients available")
+	}
+	return c.DeepResearch(ctx, query, opts...)
+}
+
+func (m *ClientManager) DeepResearchStream(ctx context.Context, query string, cb ProgressCallback, opts ...DeepResearchOption) error {
+	c := m.NextClient()
+	if c == nil {
+		return errors.New("no clients available")
+	}
+	return c.DeepResearchStream(ctx, query, cb, opts...)
 }
 
 func (c *Client) Init(ctx context.Context) error {
@@ -714,7 +830,10 @@ func buildGenerateInner(prompt string, files []uploadedFile, model, language, re
 
 	fileData := make([]interface{}, 0, len(files))
 	for _, file := range files {
-		fileData = append(fileData, []interface{}{[]interface{}{file.ID}, file.Name})
+		fileData = append(fileData, []interface{}{
+			[]interface{}{file.ID, 1, nil, file.MimeType},
+			file.Name, nil, nil, nil, nil, nil, nil, []interface{}{0},
+		})
 	}
 
 	messageContent := []interface{}{prompt, 0, nil, fileData, nil, nil, 0}

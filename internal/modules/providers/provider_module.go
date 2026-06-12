@@ -12,7 +12,7 @@ var Module = fx.Options(
 	fx.Invoke(RegisterProvider),
 )
 
-func RegisterProvider(pm *ProviderManager, c *Client, log *zap.Logger) {
+func RegisterProvider(pm *ProviderManager, c *ClientManager, log *zap.Logger) {
 	pm.Register("gemini", c)
 
 	// Initialize specifically this provider
